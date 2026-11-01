@@ -34,11 +34,25 @@ void test_write_then_read_roundtrips(void)
 void test_toggle_flips_state(void)
 {
     hf_gpio_t pin = HF_PIN(0, 7);
+    TEST_ASSERT_TRUE(hf_gpio_init(pin, HF_GPIO_OUTPUT_PUSHPULL));
+
+    /* Start Low, toggle to High, toggle to Low */
     hf_gpio_write(pin, false);
+    
     hf_gpio_toggle(pin);
-    TEST_ASSERT_TRUE(hf_gpio_read(pin));
+    TEST_ASSERT_TRUE(hf_gpio_read(pin));  /* 1st toggle: Low -> High */
+    
     hf_gpio_toggle(pin);
-    TEST_ASSERT_FALSE(hf_gpio_read(pin));
+    TEST_ASSERT_FALSE(hf_gpio_read(pin)); /* 2nd toggle: High -> Low */
+
+    /* Start High, toggle to Low, toggle to High */
+    hf_gpio_write(pin, true);
+    
+    hf_gpio_toggle(pin);
+    TEST_ASSERT_FALSE(hf_gpio_read(pin)); /* 3rd toggle: High -> Low */
+    
+    hf_gpio_toggle(pin);
+    TEST_ASSERT_TRUE(hf_gpio_read(pin));  /* 4th toggle: Low -> High */
 }
 
 void test_read_reflects_externally_driven_input(void)
