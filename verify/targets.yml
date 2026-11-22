@@ -1,41 +1,39 @@
-# Per-vendor configuration for the hardware verification pipeline.
-# Each entry describes everything scripts/build.sh, the CI workflow,
-# and (once HF·NODE details exist) scripts/verify.sh need to build and
-# run one vendor's test firmware. Adding a new vendor is meant to be:
-# add a Dockerfile under docker/<vendor>/, add test folders under
-# tests/<vendor>/, add one entry here — no script changes.
+# Per-vendor configuration for the local build -> verify -> ship pipeline.
+# Read by scripts/build.sh (and later verify.sh / ship.sh). Paths are
+# machine-local; edit them here, not in the scripts. Adding a vendor
+# should be: tests/<vendor>/<test>/ folders + one entry here.
 #
-# EDIT ME: this is a hand-authored starting point, not yet validated
-# against a real build. The first real CI run is expected to surface
-# fixes needed here (image tag, exact tool paths, etc.) — see
-# docs/verification/efr32.md once Phase 1/2 evidence exists.
+# Paths use Git Bash (POSIX) form, e.g. /c/Users/...
 
 targets:
   efr32:
     enabled: true
     board: BRD2601B
     part: EFR32MG24B310F1536IM48
-    # Silicon Labs' current-generation sl_gpio/sl_i2c driver, confirmed
-    # with the user — NOT classic emlib (TARGET_SILABS). Must match the
-    # -DTARGET_* passed to the compiler in docker/efr32/Dockerfile and
-    # tests/efr32/*/Makefile.
+    # Current sl_gpio/sl_i2c driver, NOT classic emlib (TARGET_SILABS).
     target_macro: TARGET_SILABS_SLGPIO
-    sdk: simplicity-sdk
-    # Pinned deliberately (hard rule: never changed silently). Latest
-    # patch of the current June-2026 LTS baseline at the time this was
-    # written — confirmed with the user, not a default.
-    sdk_version: "2026.6.1"
-    docker_image: portable-mcu-hal/efr32-verify
-    dockerfile: docker/efr32/Dockerfile
-    # HF·NODE target id for this physical board — not yet supplied;
-    # required before scripts/hfnode.sh / verify.sh can run (Phase 3).
-    hfnode_target_id: null
+    # SDK pin: changes only when a human decides to bump it. 2025.6.3 is
+    # the SDK already installed locally (git tag v2025.6.3); it replaced
+    # the earlier CI-era 2026.6.1 pin by the maintainer's decision.
+    sdk_version: "2025.6.3"
+    sdk_path: /c/Users/sarve/SimplicityStudio/SDKs/simplicity_sdk_2
+    # slc-cli 6.0.25, installed by slt (see docs/verification/efr32.md).
+    slc_dir: /c/Users/sarve/.silabs/slt/installs/archive/slc-cli-v6.0.25/slc_cli
+    toolchain_path: /c/SiliconLabs/SimplicityStudio/v5/developer/toolchains/gnu_arm/12.2.rel1_2023.7
+    cmake_dir: /c/SiliconLabs/SimplicityStudio/v5/developer/adapter_packs/cmake/bin
+    ninja_dir: /c/SiliconLabs/SimplicityStudio/v5/developer/adapter_packs/ninja
+    # Required by the generated toolchain.cmake as POST_BUILD_EXE; the
+    # smoke build runs no post-build step, so this is only a path check.
+    commander_path: /c/SiliconLabs/SimplicityStudio/v5/developer/adapter_packs/commander/commander.exe
+    # Base example whose generated board/clock/init scaffolding we keep;
+    # its application logic is replaced by the test's main.c.
+    base_project: app/common/example/blink_baremetal/blink_baremetal.slcp
+    # HF�NODE device connected to the BRD2601B (supplied by the maintainer).
+    # API endpoints/credentials still needed before Phase 2 scripts exist.
+    hfnode_target_id: HF-PI_011
     tests:
       - name: smoke
         dir: tests/efr32/smoke
         description: >
-          Boots, toggles the board LED a few times through the
-          wrapper's hf_gpio_* API, prints structured log lines, exits.
-          golden: not yet captured (Phase 3 — needs a real device run
-          through HF·NODE, approved by the user, before
-          tests/efr32/golden/smoke.log can be written).
+          Boots, toggles the board LED through the wrapper's hf_gpio_*
+          API, prints structured log lines, prints [DONE].

@@ -264,3 +264,33 @@ Confidence here comes from this being a well-understood, widely-
 documented BuildKit behavior (disabling attestations to get a clean
 single-manifest `--load` result), not a fresh guess — the next CI run
 is still the real confirmation.
+
+## Entry 7 — switched from CI/Docker to a local build (Phase 1 done)
+
+GitHub Actions and Docker were dropped (SDK/container downloads too
+heavy); `.github/workflows/build.yml` and `docker/efr32/` were removed.
+`scripts/build.sh <vendor> <test> <build_id>` now builds locally.
+
+**One-time local setup (this machine):**
+- `slt` 1.2.2 (Windows) in `C:\SiliconLabs\slt`; `slt install slc-cli`
+  put slc-cli 6.0.25 (plus its Python/Java) under
+  `~/.silabs/slt/installs/archive/`. The direct slc-cli URL on silabs.com
+  returned 403, so slt is the working route. Note `slt` appears hung while
+  extracting; the Java step alone took ~13 minutes.
+- SDK: Simplicity SDK 2025.6.3, an unmodified clone of
+  `SiliconLabs/simplicity_sdk` at tag `v2025.6.3`
+  (`C:\Users\sarve\SimplicityStudio\SDKs\simplicity_sdk_2`). The pin in
+  `verify/targets.yml` moved from the CI-era 2026.6.1 to 2025.6.3 by the
+  maintainer's decision.
+- Signature trust, run once after verifying the checkout was clean:
+  `slc signature trust --sdk "C:/Users/sarve/SimplicityStudio/SDKs/simplicity_sdk_2/"`
+- Toolchain: Simplicity Studio's GNU Arm 12.2.rel1, cmake 3.27 and ninja
+  (no GNU make). Build backend is `slc generate -o cmake`.
+
+**Findings:** LED0 on BRD2601B is port D pin 2 (active low), not the
+port 1 pin 2 guessed earlier. The generated `toolchain.cmake` needs
+`ARM_GCC_DIR`, `NINJA_EXE_PATH` and `POST_BUILD_EXE`, which build.sh sets.
+
+**Result:** `scripts/build.sh efr32 smoke <id>` builds
+`out/efr32/smoke.{elf,hex,map}`; the id is in the binary and changes with
+each build; `hf_gpio_init/read/toggle` are linked in.
