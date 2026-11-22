@@ -8,8 +8,11 @@
 targets:
   efr32:
     enabled: true
-    board: BRD2601B
-    part: EFR32MG24B310F1536IM48
+    # Physical kit on the bench: xG24 10 dBm Pro Kit (PK6009A) = BRD4187C radio
+    # board on a BRD4002A mainboard (read from the J-Link with `commander
+    # adapter probe`). Replaces the BRD2601B assumed earlier.
+    board: BRD4187C
+    part: EFR32MG24B210F1536IM48
     # Current sl_gpio/sl_i2c driver, NOT classic emlib (TARGET_SILABS).
     target_macro: TARGET_SILABS_SLGPIO
     # SDK pin: changes only when a human decides to bump it. 2025.6.3 is
@@ -25,15 +28,31 @@ targets:
     # Required by the generated toolchain.cmake as POST_BUILD_EXE; the
     # smoke build runs no post-build step, so this is only a path check.
     commander_path: /c/SiliconLabs/SimplicityStudio/v5/developer/adapter_packs/commander/commander.exe
-    # Base example whose generated board/clock/init scaffolding we keep;
-    # its application logic is replaced by the test's main.c.
-    base_project: app/common/example/blink_baremetal/blink_baremetal.slcp
-    # HF·NODE device connected to the BRD2601B (supplied by the maintainer).
+    # HFÂ·NODE device connected to the BRD2601B (supplied by the maintainer).
     # API endpoints/credentials still needed before Phase 2 scripts exist.
-    hfnode_target_id: HF-PI_011
+    hfnode_target_id: HF-PI-007
+    # Flasher selected by the HF agent; copied from this device's last good
+    # firmware row (id 53). An empty value made the flash fail.
+    hfnode_controller_type: silabs_efr32mg24a
+    # Each test is a copy of an SDK example (original license headers kept)
+    # under tests/efr32/<test>/. build.sh generates the project from
+    # base_project with the listed extra components, then overlays the
+    # test's own .c/.h files on the generated copy (never on the SDK).
+    # Logging is SEGGER RTT (iostream_rtt), read over SWD, not UART.
     tests:
-      - name: smoke
-        dir: tests/efr32/smoke
+      - name: gpio_baseline
+        dir: tests/efr32/gpio_baseline
+        base_project: app/common/example/blink_baremetal/blink_baremetal.slcp
+        components: [iostream_rtt, iostream_retarget_stdio]
+        wrapper_sources: []
         description: >
-          Boots, toggles the board LED through the wrapper's hf_gpio_*
-          API, prints structured log lines, prints [DONE].
+          SDK blink_baremetal, vendor LED driver (sl_led_*), plus log lines.
+          Reference behaviour for the wrapper test.
+      - name: gpio_wrapper
+        dir: tests/efr32/gpio_wrapper
+        base_project: app/common/example/blink_baremetal/blink_baremetal.slcp
+        components: [iostream_rtt, iostream_retarget_stdio]
+        wrapper_sources: [silicon_labs/gpio/hal_port_silabs_slgpio.c]
+        description: >
+          Same app with only the LED calls replaced by hf_gpio_*.
+          Must log exactly what gpio_baseline logs.

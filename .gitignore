@@ -11,3 +11,7 @@ build/
 # installs, never committed (see CLAUDE.md / docs/verification/)
 out/
 *.hex
+
+# local HF·NODE skill file: contains an API token, never commit
+skill.md
+.hf-env.local
